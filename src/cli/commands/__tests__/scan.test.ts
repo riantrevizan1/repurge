@@ -63,6 +63,22 @@ describe('runScan', () => {
     expect(report.results[0].category).toBe('git_worktrees');
   });
 
+  it('filters by an explicit list of categories when provided', async () => {
+    const detectors: IDetector[] = [
+      new FakeDetector('NodeModulesDetector', 'node_modules', [makeItem()]),
+      new FakeDetector('GitWorktreesDetector', 'git_worktrees', [
+        makeItem({ id: 'item-2', category: 'git_worktrees' }),
+      ]),
+      new FakeDetector('PackageCachesDetector', 'package_caches', [
+        makeItem({ id: 'item-3', category: 'package_caches' }),
+      ]),
+    ];
+
+    const report = await runScan({ categories: ['node_modules', 'package_caches'] }, detectors);
+
+    expect(report.results.map(r => r.category).sort()).toEqual(['node_modules', 'package_caches']);
+  });
+
   it('computes breakdown by priority', async () => {
     const detectors: IDetector[] = [
       new FakeDetector('NodeModulesDetector', 'node_modules', [

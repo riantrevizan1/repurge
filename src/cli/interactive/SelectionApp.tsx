@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import chalk from 'chalk';
-import Table from 'cli-table3';
 import { GarbageItem, ScanReport } from '../../types/index.js';
 import { formatBytes } from '../../utils/fs.js';
+import { priorityBadge } from '../output/colors.js';
+import { renderBanner } from '../output/banner.js';
 import {
   buildSelectionTree,
   toggleItemSelection,
@@ -17,7 +18,6 @@ import {
   getSelectionSummary,
   SelectionTree,
 } from './selectionTree.js';
-import { computePathWidth, CHECKBOX_COL_WIDTH, SIZE_COL_WIDTH } from './layout.js';
 
 export interface SelectionAppProps {
   report: ScanReport;
@@ -27,6 +27,7 @@ export interface SelectionAppProps {
 
 const CHECKED = '[x]';
 const UNCHECKED = '[ ]';
+const PATH_WIDTH = 60;
 
 function truncate(text: string, width: number): string {
   if (text.length <= width) return text;
@@ -38,68 +39,12 @@ function highlight(text: string, isCursor: boolean): string {
   return isCursor ? chalk.inverse(text) : text;
 }
 
-/**
- * Renders every group as a header line plus (when expanded) a bordered
- * mini-table of its items. The row counter here must walk groups/items in
- * exactly the same order as flattenVisibleRows() so `cursor` lines up with
- * the row actually being highlighted.
- */
-function renderGroups(tree: SelectionTree, cursor: number, pathWidth: number): React.ReactElement[] {
-  let rowIndex = 0;
-
-  return tree.map((group, groupIndex) => {
-    const isGroupCursor = rowIndex === cursor;
-    rowIndex += 1;
-
-    const arrow = group.expanded ? '▼' : '▶';
-    const checkbox = isGroupFullySelected(group) ? CHECKED : UNCHECKED;
-    const groupSize = group.items.reduce((sum, itemNode) => sum + itemNode.item.size, 0);
-    const headerLine = `${arrow} ${checkbox} ${group.label} — ${formatBytes(groupSize)} (${group.items.length} item(s))`;
-
-    let itemsTable: string | null = null;
-
-    if (group.expanded) {
-      const table = new Table({
-        style: { head: [], border: [] },
-        colWidths: [CHECKBOX_COL_WIDTH, SIZE_COL_WIDTH, pathWidth + 2],
-        wordWrap: true,
-      });
-
-      for (const itemNode of group.items) {
-        const isItemCursor = rowIndex === cursor;
-        rowIndex += 1;
-
-        const checkboxCell = itemNode.selected ? CHECKED : UNCHECKED;
-        const sizeCell = formatBytes(itemNode.item.size);
-        const pathCell = truncate(itemNode.item.path, pathWidth);
-
-        table.push([
-          highlight(checkboxCell, isItemCursor),
-          highlight(sizeCell, isItemCursor),
-          highlight(pathCell, isItemCursor),
-        ]);
-      }
-
-      itemsTable = table.toString();
-    }
-
-    return (
-      <Box flexDirection="column" key={`group-${groupIndex}`}>
-        <Text>{highlight(headerLine, isGroupCursor)}</Text>
-        {itemsTable !== null && <Text>{itemsTable}</Text>}
-      </Box>
-    );
-  });
-}
-
 export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps): React.ReactElement {
   const [tree, setTree] = useState<SelectionTree>(() => buildSelectionTree(report));
   const [cursor, setCursor] = useState(0);
-  const { stdout } = useStdout();
 
   const rows = flattenVisibleRows(tree);
   const summary = getSelectionSummary(tree);
-  const pathWidth = computePathWidth(stdout?.columns);
 
   useInput((input, key) => {
     if (key.escape || input === 'q') {
@@ -165,6 +110,7 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
   if (tree.length === 0) {
     return (
       <Box flexDirection="column">
+        <Text>{renderBanner()}</Text>
         <Text>Nothing to select. Press q to exit.</Text>
       </Box>
     );
@@ -172,12 +118,35 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
 
   return (
     <Box flexDirection="column">
+      <Text>{renderBanner()}</Text>
       <Text>
-        {tree.length} group(s) · {formatBytes(report.totalSize)} reclaimable · {summary.count} selected, sum{' '}
+        {tree.length} categories · {formatBytes(report.totalSize)} reclaimable · {summary.count} selected, sum{' '}
         {formatBytes(summary.size)}
       </Text>
       <Text> </Text>
-      {renderGroups(tree, cursor, pathWidth)}
+      {rows.map((row, rowIndex) => {
+        const isCursor = rowIndex === cursor;
+
+        if (row.kind === 'group') {
+          const group = tree[row.groupIndex];
+          const arrow = group.expanded ? '▼' : '▶';
+          const checkbox = isGroupFullySelected(group) ? CHECKED : UNCHECKED;
+          const groupSize = group.items.reduce((sum, itemNode) => sum + itemNode.item.size, 0);
+          const line = `${arrow} ${checkbox} ${group.label} — ${formatBytes(groupSize)} (${group.items.length} item(s))`;
+          return (
+            <Text key={`group-${row.groupIndex}`}>{highlight(line, isCursor)}</Text>
+          );
+        }
+
+        const itemNode = tree[row.groupIndex].items[row.itemIndex];
+        const checkbox = itemNode.selected ? CHECKED : UNCHECKED;
+        const line = `   ${checkbox} ${formatBytes(itemNode.item.size).padEnd(10)} ${priorityBadge(
+          itemNode.item.priority
+        )} ${truncate(itemNode.item.path, PATH_WIDTH)}`;
+        return (
+          <Text key={`item-${row.groupIndex}-${row.itemIndex}`}>{highlight(line, isCursor)}</Text>
+        );
+      })}
       <Text> </Text>
       <Text dimColor>↑/↓ move · ←/→ collapse/expand · space toggle · a all · n none · enter confirm · q cancel</Text>
     </Box>

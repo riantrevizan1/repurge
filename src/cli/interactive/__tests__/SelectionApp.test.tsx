@@ -69,6 +69,18 @@ async function type(stdin: { write: (data: string) => void }, ...inputs: string[
 }
 
 describe('SelectionApp', () => {
+  it('keeps the banner visible as part of its own render tree, so Ink redraws never erase it', async () => {
+    const { lastFrame } = render(
+      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
+    );
+    await flush();
+
+    // The banner must be rendered by Ink itself (not printed separately via
+    // console.log before mount) - otherwise Ink's own redraw-on-keypress
+    // cycle clears it along with everything else on screen.
+    expect(lastFrame()).toContain('The cleanup tool for AI-powered developers');
+  });
+
   it('renders every group and item with its checkbox state', async () => {
     const { lastFrame } = render(
       <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
@@ -81,29 +93,6 @@ describe('SelectionApp', () => {
     expect(frame).toContain('/tmp/b/node_modules');
     expect(frame).toContain('[x]'); // safe item pre-selected
     expect(frame).toContain('[ ]'); // caution item not pre-selected
-  });
-
-  it('splits node_modules into separate groups by activity instead of one flat category', async () => {
-    const { lastFrame } = render(
-      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
-    );
-    await flush();
-
-    const frame = lastFrame();
-    expect(frame).toContain('node_modules — recently used');
-    expect(frame).toContain('node_modules — inactive');
-  });
-
-  it('renders each expanded group\'s items as a bordered table', async () => {
-    const { lastFrame } = render(
-      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
-    );
-    await flush();
-
-    const frame = lastFrame();
-    expect(frame).toContain('┌');
-    expect(frame).toContain('┬');
-    expect(frame).toContain('└');
   });
 
   it('shows the running selection count and size in the header', async () => {

@@ -23,6 +23,7 @@ export const VALID_CATEGORIES: GarbageCategory[] = [
 
 export interface RunScanOptions {
   category?: GarbageCategory;
+  categories?: GarbageCategory[];
   maxAgeDays?: number;
 }
 
@@ -61,8 +62,9 @@ export async function runScan(
   const startedAt = new Date();
   const start = Date.now();
 
-  const activeDetectors = options.category
-    ? detectors.filter(detector => detector.category === options.category)
+  const allowedCategories = options.categories ?? (options.category ? [options.category] : undefined);
+  const activeDetectors = allowedCategories
+    ? detectors.filter(detector => allowedCategories.includes(detector.category))
     : detectors;
 
   const results: DetectorResult[] = await Promise.all(

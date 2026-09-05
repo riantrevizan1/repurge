@@ -11,6 +11,7 @@ import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
 import { saveLastCleanResult } from '../reportStore.js';
 import { runInteractiveSelect } from '../interactive/runInteractiveSelect.js';
+import { runCategoryPicker } from '../interactive/runCategoryPicker.js';
 
 export type ConfirmFn = (item: GarbageItem) => Promise<boolean>;
 
@@ -155,7 +156,28 @@ export function cleanCommand(): Command {
       }
 
       const category = opts.category as GarbageCategory | undefined;
-      const scanReport = await runScan({ category });
+      let categoriesToScan: GarbageCategory[] | undefined = category ? [category] : undefined;
+
+      // In interactive mode (and only when the user hasn't already scoped
+      // things with --category), ask up front what to scan for, so items
+      // outside that scope are never even detected - not just deselected
+      // later in the item checklist.
+      if (opts.interactive && !category) {
+        const chosenCategories = await runCategoryPicker();
+
+        if (chosenCategories === null) {
+          console.log(colors.info('Cancelled. No changes were made.'));
+          return;
+        }
+        if (chosenCategories.length === 0) {
+          console.log(colors.info('Nothing selected to scan. No changes were made.'));
+          return;
+        }
+
+        categoriesToScan = chosenCategories;
+      }
+
+      const scanReport = await runScan({ categories: categoriesToScan });
 
       if (scanReport.totalItems === 0) {
         console.log(colors.info('Nothing to clean. Your system is already tidy.'));
@@ -164,7 +186,7 @@ export function cleanCommand(): Command {
 
       const config: RepurgeConfig = {
         dryRun: opts.dryRun,
-        includeCategories: category ? [category] : VALID_CATEGORIES,
+        includeCategories: categoriesToScan ?? VALID_CATEGORIES,
         excludePaths: [],
         maxAge: 7,
         confirmAll: !opts.skipConfirm,
@@ -173,7 +195,6 @@ export function cleanCommand(): Command {
       let confirm: ConfirmFn;
 
       if (opts.interactive) {
-        console.log(renderBanner());
         const selected = await runInteractiveSelect(scanReport);
 
         if (selected === null) {
