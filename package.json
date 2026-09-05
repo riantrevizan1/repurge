@@ -1,0 +1,68 @@
+{
+  "name": "repurge",
+  "version": "0.1.0",
+  "description": "The cleanup tool for AI-powered developers.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "repurge": "dist/bin/repurge.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "ts-node src/bin/repurge.ts",
+    "build": "tsc",
+    "clean:build": "rm -rf dist",
+    "prebuild": "npm run clean:build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "cleanup",
+    "developer-tools",
+    "ai-coding",
+    "nodejs",
+    "typescript",
+    "cli"
+  ],
+  "author": "riantrevizan1",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/riantrevizan1/repurge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/riantrevizan1/repurge/issues"
+  },
+  "homepage": "https://github.com/riantrevizan1/repurge#readme",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.1",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
