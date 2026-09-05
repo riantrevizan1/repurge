@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { ExplainReport, GarbageCategory } from '../../types/index.js';
 import { StoredReport, loadStoredReport } from '../reportStore.js';
 import { formatExplainReport } from '../output/index.js';
+import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
 
 const CATEGORY_DESCRIPTIONS: Record<GarbageCategory, string> = {
@@ -67,6 +68,7 @@ export function explainCommand(): Command {
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
+        console.log(renderBanner());
         console.log(formatExplainReport(report));
       }
     });

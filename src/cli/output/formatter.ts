@@ -1,12 +1,14 @@
+import Table from 'cli-table3';
 import {
   ScanReport,
   CleanResult,
   ExplainReport,
   DoctorReport,
   GarbageCategory,
+  GarbageItem,
 } from '../../types/index.js';
 import { formatBytes } from '../../utils/fs.js';
-import { colors, priorityBadge, healthLabel, severityBadge } from './colors.js';
+import { colors, priorityBadge, priorityLabel, healthLabel, severityBadge } from './colors.js';
 
 const CATEGORY_LABELS: Record<GarbageCategory, string> = {
   node_modules: 'node_modules',
@@ -22,18 +24,49 @@ export function categoryLabel(category: GarbageCategory): string {
   return CATEGORY_LABELS[category];
 }
 
-function pad(text: string, width: number): string {
-  return text.length >= width ? text : text + ' '.repeat(width - text.length);
-}
-
 function truncate(text: string, width: number): string {
   if (text.length <= width) return text;
   const half = Math.floor((width - 3) / 2);
   return `${text.slice(0, half)}...${text.slice(text.length - half)}`;
 }
 
+function byLargestFirst(items: GarbageItem[]): GarbageItem[] {
+  return [...items].sort((a, b) => b.size - a.size);
+}
+
 const PATH_WIDTH = 55;
-const SIZE_WIDTH = 10;
+
+function buildItemsTable(items: GarbageItem[]): string {
+  const table = new Table({
+    head: ['Path', 'Size', 'Priority', 'Reason'].map(label => colors.bold(label)),
+    colWidths: [PATH_WIDTH + 2, 12, 11, 48],
+    wordWrap: true,
+    style: { head: [], border: [] },
+  });
+
+  for (const item of byLargestFirst(items)) {
+    table.push([truncate(item.path, PATH_WIDTH), formatBytes(item.size), priorityBadge(item.priority), item.reason]);
+  }
+
+  return table.toString();
+}
+
+function buildSummaryTable(report: ScanReport): string {
+  const table = new Table({
+    head: ['Priority', 'Items', 'Size'].map(label => colors.bold(label)),
+    colWidths: [14, 10, 14],
+    style: { head: [], border: [] },
+  });
+
+  table.push(
+    [colors.bold('Total'), String(report.totalItems), colors.bold(formatBytes(report.totalSize))],
+    [priorityLabel('safe'), String(report.breakdown.safe.count), formatBytes(report.breakdown.safe.size)],
+    [priorityLabel('review'), String(report.breakdown.review.count), formatBytes(report.breakdown.review.size)],
+    [priorityLabel('caution'), String(report.breakdown.caution.count), formatBytes(report.breakdown.caution.size)]
+  );
+
+  return table.toString();
+}
 
 export function formatScanReport(report: ScanReport): string {
   const lines: string[] = [];
@@ -42,6 +75,8 @@ export function formatScanReport(report: ScanReport): string {
   lines.push(colors.muted(`Completed in ${(report.duration / 1000).toFixed(1)}s`));
   lines.push('');
   lines.push(`Potentially reclaimable: ${colors.bold(formatBytes(report.totalSize))}`);
+  lines.push('');
+  lines.push(buildSummaryTable(report));
 
   for (const detectorResult of report.results) {
     if (detectorResult.items.length === 0) continue;
@@ -49,29 +84,8 @@ export function formatScanReport(report: ScanReport): string {
     const categorySize = detectorResult.items.reduce((sum, item) => sum + item.size, 0);
     lines.push('');
     lines.push(`${colors.bold(categoryLabel(detectorResult.category))} (${formatBytes(categorySize)})`);
-
-    for (const item of detectorResult.items) {
-      lines.push(
-        `  ${pad(truncate(item.path, PATH_WIDTH), PATH_WIDTH)} ` +
-          `${pad(formatBytes(item.size), SIZE_WIDTH)} ` +
-          `${priorityBadge(item.priority)} ${item.reason}`
-      );
-    }
+    lines.push(buildItemsTable(detectorResult.items));
   }
-
-  lines.push('');
-  lines.push(colors.bold('Breakdown by priority:'));
-  lines.push(
-    `  ${priorityBadge('safe')} ${report.breakdown.safe.count} item(s), ${formatBytes(report.breakdown.safe.size)}`
-  );
-  lines.push(
-    `  ${priorityBadge('review')} ${report.breakdown.review.count} item(s), ${formatBytes(report.breakdown.review.size)}`
-  );
-  lines.push(
-    `  ${priorityBadge('caution')} ${report.breakdown.caution.count} item(s), ${formatBytes(report.breakdown.caution.size)}`
-  );
-  lines.push('');
-  lines.push(colors.muted(`Total: ${report.totalItems} item(s)`));
 
   return lines.join('\n');
 }

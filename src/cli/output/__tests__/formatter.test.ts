@@ -65,13 +65,37 @@ describe('formatScanReport', () => {
     expect(output).toContain('Not modified for 20 days');
   });
 
-  it('includes a summary with total items, total size and breakdown by priority', () => {
+  it('includes a summary dashboard with total items, total size and breakdown by priority', () => {
     const output = formatScanReport(makeScanReport());
 
     expect(output).toContain('Potentially reclaimable: 100 MB');
-    expect(output).toContain('Breakdown by priority:');
-    expect(output).toContain('1 item(s), 50 MB');
-    expect(output).toContain('Total: 2 item(s)');
+    // Summary dashboard table (cli-table3): Priority | Items | Size rows.
+    expect(output).toContain('Priority');
+    expect(output).toContain('Items');
+    expect(output).toContain('Total');
+    expect(output).toContain('Safe');
+    expect(output).toContain('Review');
+    expect(output).toContain('Caution');
+  });
+
+  it('sorts items within a category from largest to smallest', () => {
+    const smaller = makeItem({ id: 'small', size: 10, path: '/tmp/small/node_modules' });
+    const larger = makeItem({ id: 'large', size: 1000, path: '/tmp/large/node_modules' });
+    const report = makeScanReport({
+      results: [
+        {
+          detector: 'NodeModulesDetector',
+          category: 'node_modules',
+          items: [smaller, larger],
+          scannedAt: new Date(),
+          duration: 1,
+        },
+      ],
+    });
+
+    const output = formatScanReport(report);
+
+    expect(output.indexOf('/tmp/large/node_modules')).toBeLessThan(output.indexOf('/tmp/small/node_modules'));
   });
 
   it('produces a report that survives a JSON round-trip (the --json CLI flag serializes the raw ScanReport, not the formatted text)', () => {
@@ -126,8 +150,8 @@ describe('formatScanReport', () => {
     const output = formatScanReport(emptyReport);
 
     expect(output).not.toContain('Git Worktrees');
-    expect(output).toContain('Total: 0 item(s)');
     expect(output).toContain('Potentially reclaimable: 0 B');
+    expect(output).toContain('Total');
   });
 });
 

@@ -3,6 +3,7 @@ import { DoctorReport, ScanReport } from '../../types/index.js';
 import { runScan } from './scan.js';
 import { formatBytes } from '../../utils/fs.js';
 import { formatDoctorReport } from '../output/index.js';
+import { renderBanner } from '../output/banner.js';
 
 const GB = 1024 * 1024 * 1024;
 const HIGH_SIZE_THRESHOLD = GB; // >= 1 GB in a single category
@@ -65,6 +66,7 @@ export function doctorCommand(): Command {
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
+        console.log(renderBanner());
         console.log(formatDoctorReport(report));
       }
     });

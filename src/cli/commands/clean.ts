@@ -7,6 +7,7 @@ import { GitWorktreesCleaner } from '../../cleaners/gitWorktrees.js';
 import { PackageCachesCleaner } from '../../cleaners/packageCaches.js';
 import { runScan, VALID_CATEGORIES } from './scan.js';
 import { formatScanReport, formatCleanResult } from '../output/index.js';
+import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
 import { saveLastCleanResult } from '../reportStore.js';
 
@@ -129,6 +130,7 @@ export function cleanCommand(): Command {
       }
 
       if (!opts.json) {
+        console.log(renderBanner());
         console.log(formatScanReport(scanReport));
         console.log('');
       }

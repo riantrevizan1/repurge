@@ -11,6 +11,7 @@ import { NodeModulesDetector } from '../../detectors/nodeModules.js';
 import { GitWorktreesDetector } from '../../detectors/gitWorktrees.js';
 import { PackageCachesDetector } from '../../detectors/packageCaches.js';
 import { formatScanReport } from '../output/index.js';
+import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
 import { saveLastScanReport } from '../reportStore.js';
 
@@ -136,6 +137,7 @@ export function scanCommand(): Command {
       if (opts.json) {
         console.log(JSON.stringify(report, null, 2));
       } else {
+        console.log(renderBanner());
         console.log(formatScanReport(report));
       }
     });

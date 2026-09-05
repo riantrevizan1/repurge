@@ -13,14 +13,25 @@ export const colors = {
   bold: chalk.bold,
 };
 
-function pad(text: string, width: number): string {
-  return text.length >= width ? text : text + ' '.repeat(width - text.length);
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-const PRIORITY_WIDTH = 9; // "[Caution]" is the longest label
-
 export function priorityBadge(priority: GarbagePriority): string {
-  const label = pad(`[${priority.charAt(0).toUpperCase()}${priority.slice(1)}]`, PRIORITY_WIDTH);
+  const label = `[${capitalize(priority)}]`;
+
+  switch (priority) {
+    case 'safe':
+      return colors.safe(label);
+    case 'review':
+      return colors.review(label);
+    case 'caution':
+      return colors.caution(label);
+  }
+}
+
+export function priorityLabel(priority: GarbagePriority): string {
+  const label = capitalize(priority);
 
   switch (priority) {
     case 'safe':

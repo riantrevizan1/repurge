@@ -46,10 +46,13 @@
   "homepage": "https://github.com/riantrevizan1/repurge#readme",
   "dependencies": {
     "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
     "commander": "^11.1.0",
+    "figlet": "^1.11.4",
     "fs-extra": "^11.2.0"
   },
   "devDependencies": {
+    "@types/figlet": "^1.7.0",
     "@types/fs-extra": "^11.0.4",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.6",
