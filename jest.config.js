@@ -2,9 +2,9 @@ export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/__tests__/**/*.ts', '**/*.test.ts'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
-  extensionsToTreatAsEsm: ['.ts'],
+  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/*.test.[jt]s?(x)'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
   transform: {
     '^.+\\.tsx?$': [
       'ts-jest',
@@ -36,6 +36,7 @@ export default {
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
+    'src/**/*.tsx',
     '!src/**/*.d.ts',
     '!src/bin/**',
     '!src/**/index.ts',

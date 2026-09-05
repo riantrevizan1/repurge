@@ -10,6 +10,7 @@ import { formatScanReport, formatCleanResult } from '../output/index.js';
 import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
 import { saveLastCleanResult } from '../reportStore.js';
+import { runInteractiveSelect } from '../interactive/runInteractiveSelect.js';
 
 export type ConfirmFn = (item: GarbageItem) => Promise<boolean>;
 
@@ -34,6 +35,16 @@ export function createStdinConfirm(): ConfirmFn {
 }
 
 const alwaysConfirm: ConfirmFn = async () => true;
+
+/**
+ * Builds a ConfirmFn from a fixed list of already-approved items, e.g. the
+ * result of the interactive checklist. Unlike createStdinConfirm, this never
+ * prompts - the decision was already made once, up front.
+ */
+export function confirmFromSelection(selectedItems: GarbageItem[]): ConfirmFn {
+  const selectedIds = new Set(selectedItems.map(item => item.id));
+  return async (item: GarbageItem): Promise<boolean> => selectedIds.has(item.id);
+}
 
 export function mergeCleanResults(results: CleanResult[]): CleanResult {
   return results.reduce<CleanResult>(
@@ -101,6 +112,7 @@ interface CleanCliOptions {
   category?: string;
   skipConfirm: boolean;
   json: boolean;
+  interactive: boolean;
 }
 
 export function cleanCommand(): Command {
@@ -112,11 +124,22 @@ export function cleanCommand(): Command {
     .option('--category <type>', `Clean only a specific category (${VALID_CATEGORIES.join(', ')})`)
     .option('--skip-confirm', 'Do not ask for confirmation before deleting (use with caution)', false)
     .option('--json', 'Output the result as JSON', false)
+    .option(
+      '-i, --interactive',
+      'Pick exactly which items to remove from an on-screen checklist instead of confirming one by one',
+      false
+    )
     .action(async (opts: CleanCliOptions) => {
       if (opts.category && !VALID_CATEGORIES.includes(opts.category as GarbageCategory)) {
         console.error(
           colors.error(`Invalid category "${opts.category}". Expected one of: ${VALID_CATEGORIES.join(', ')}`)
         );
+        process.exitCode = 1;
+        return;
+      }
+
+      if (opts.interactive && opts.json) {
+        console.error(colors.error('--interactive cannot be combined with --json'));
         process.exitCode = 1;
         return;
       }
@@ -129,12 +152,6 @@ export function cleanCommand(): Command {
         return;
       }
 
-      if (!opts.json) {
-        console.log(renderBanner());
-        console.log(formatScanReport(scanReport));
-        console.log('');
-      }
-
       const config: RepurgeConfig = {
         dryRun: opts.dryRun,
         includeCategories: category ? [category] : VALID_CATEGORIES,
@@ -143,8 +160,33 @@ export function cleanCommand(): Command {
         confirmAll: !opts.skipConfirm,
       };
 
+      let confirm: ConfirmFn;
+
+      if (opts.interactive) {
+        console.log(renderBanner());
+        const selected = await runInteractiveSelect(scanReport);
+
+        if (selected === null) {
+          console.log(colors.info('Cancelled. No changes were made.'));
+          return;
+        }
+        if (selected.length === 0) {
+          console.log(colors.info('Nothing selected. No changes were made.'));
+          return;
+        }
+
+        confirm = confirmFromSelection(selected);
+      } else {
+        if (!opts.json) {
+          console.log(renderBanner());
+          console.log(formatScanReport(scanReport));
+          console.log('');
+        }
+        confirm = createStdinConfirm();
+      }
+
       const start = Date.now();
-      const result = await runClean(scanReport, config, { confirm: createStdinConfirm() });
+      const result = await runClean(scanReport, config, { confirm });
       const duration = Date.now() - start;
 
       if (!config.dryRun) {

@@ -1,4 +1,4 @@
-import { runClean, mergeCleanResults, ConfirmFn } from '../clean.js';
+import { runClean, mergeCleanResults, confirmFromSelection, ConfirmFn } from '../clean.js';
 import { ICleaner } from '../../../core/interfaces.js';
 import {
   GarbageItem,
@@ -219,5 +219,36 @@ describe('runClean', () => {
 
     expect(result.itemsProcessed).toBe(0);
     expect(result.itemsDeleted).toBe(0);
+  });
+});
+
+describe('confirmFromSelection', () => {
+  it('confirms only items present in the selection, by id', async () => {
+    const selected = [makeItem({ id: 'keep-1' }), makeItem({ id: 'keep-2' })];
+    const confirm = confirmFromSelection(selected);
+
+    expect(await confirm(makeItem({ id: 'keep-1' }))).toBe(true);
+    expect(await confirm(makeItem({ id: 'not-selected' }))).toBe(false);
+  });
+
+  it('confirms nothing when the selection is empty', async () => {
+    const confirm = confirmFromSelection([]);
+
+    expect(await confirm(makeItem({ id: 'anything' }))).toBe(false);
+  });
+
+  it('wires directly into runClean, cleaning only the selected items', async () => {
+    const cleaner = new FakeCleaner('NodeModulesCleaner', 'node_modules');
+    const selectedItem = makeItem({ id: 'selected', size: 500 });
+    const skippedItem = makeItem({ id: 'skipped', size: 999 });
+    const scanReport = makeScanReport([selectedItem, skippedItem]);
+
+    const result = await runClean(scanReport, baseConfig, {
+      cleaners: { node_modules: cleaner },
+      confirm: confirmFromSelection([selectedItem]),
+    });
+
+    expect(cleaner.calls).toEqual([[selectedItem]]);
+    expect(result.spacedFreed).toBe(500);
   });
 });
