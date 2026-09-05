@@ -6,19 +6,14 @@ import { homedir } from 'os';
 import { getSize, getLastModified, daysSinceModified } from '../utils/fs.js';
 import { createHash } from 'crypto';
 
-/**
- * Detector for inactive node_modules directories
- * Scans common development directories for node_modules that haven't been modified recently
- */
 export class NodeModulesDetector implements IDetector {
   name = 'NodeModulesDetector';
   category: GarbageCategory = 'node_modules';
 
   private searchPaths: string[] = [];
-  private maxAgeDays = 7; // Consider node_modules older than 7 days as potentially unused
+  private maxAgeDays = 7;
 
   constructor() {
-    // Default search paths
     this.searchPaths = [
       join(homedir(), 'projects'),
       join(homedir(), 'dev'),
@@ -29,23 +24,14 @@ export class NodeModulesDetector implements IDetector {
     ];
   }
 
-  /**
-   * Override search paths (useful for testing)
-   */
   setSearchPaths(paths: string[]): void {
     this.searchPaths = paths;
   }
 
-  /**
-   * Set the maximum age in days for considering node_modules as old
-   */
   setMaxAge(days: number): void {
     this.maxAgeDays = days;
   }
 
-  /**
-   * Main detection logic
-   */
   async detect(): Promise<GarbageItem[]> {
     const items: GarbageItem[] = [];
 
@@ -57,48 +43,38 @@ export class NodeModulesDetector implements IDetector {
     return items;
   }
 
-  /**
-   * Recursively scan a directory for node_modules
-   */
   private async scanDirectory(dirPath: string, depth = 0): Promise<GarbageItem[]> {
     const items: GarbageItem[] = [];
 
-    // Limit depth to avoid scanning too deep
     if (depth > 3) return items;
 
     try {
       const entries = await readdir(dirPath, { withFileTypes: true });
 
       for (const entry of entries) {
-        // Skip hidden directories
         if (entry.name.startsWith('.')) continue;
 
         const fullPath = join(dirPath, entry.name);
 
         if (entry.isDirectory()) {
           if (entry.name === 'node_modules') {
-            // Found a node_modules directory
             const item = await this.createGarbageItem(fullPath);
             if (item) {
               items.push(item);
             }
           } else {
-            // Continue scanning deeper
             const nestedItems = await this.scanDirectory(fullPath, depth + 1);
             items.push(...nestedItems);
           }
         }
       }
     } catch (error) {
-      // Silently skip directories we can't access
+      // Silently skip
     }
 
     return items;
   }
 
-  /**
-   * Create a GarbageItem for a detected node_modules directory
-   */
   private async createGarbageItem(nodeModulesPath: string): Promise<GarbageItem | null> {
     try {
       const size = await getSize(nodeModulesPath);
@@ -107,11 +83,11 @@ export class NodeModulesDetector implements IDetector {
 
       if (!lastModified) return null;
 
-      // Determine priority
       let priority: 'safe' | 'review' = 'safe';
       let reason = 'node_modules directory';
 
-      if (daysSinceMod && daysSinceMod > this.maxAgeDays) {
+      // Only mark as review if older than maxAge AND maxAge is > 0
+      if (daysSinceMod && this.maxAgeDays > 0 && daysSinceMod > this.maxAgeDays) {
         priority = 'review';
         reason = `Not modified for ${daysSinceMod} days`;
       }
@@ -142,9 +118,6 @@ export class NodeModulesDetector implements IDetector {
     }
   }
 
-  /**
-   * Generate a unique ID for a garbage item
-   */
   private generateId(path: string): string {
     return 'nm-' + createHash('md5').update(path).digest('hex').slice(0, 8);
   }
