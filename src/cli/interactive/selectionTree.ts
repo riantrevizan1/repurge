@@ -19,15 +19,64 @@ export type SelectionRow =
   | { kind: 'group'; groupIndex: number }
   | { kind: 'item'; groupIndex: number; itemIndex: number };
 
+export interface SelectionBucket {
+  key: string;
+  label: string;
+}
+
+/**
+ * Groups items not just by category but by *why* they were flagged, so a
+ * user can select/deselect by risk profile (e.g. "merged worktrees" vs
+ * "worktrees with uncommitted changes") instead of one flat bucket per
+ * category.
+ */
+export function bucketForItem(item: GarbageItem): SelectionBucket {
+  switch (item.category) {
+    case 'node_modules':
+      return item.priority === 'safe'
+        ? { key: 'node_modules:active', label: 'node_modules — recently used' }
+        : { key: 'node_modules:inactive', label: 'node_modules — inactive' };
+
+    case 'git_worktrees':
+      if (item.metadata.hasUncommittedChanges) {
+        return { key: 'git_worktrees:uncommitted', label: 'Git Worktrees — uncommitted changes' };
+      }
+      if (item.metadata.merged) {
+        return { key: 'git_worktrees:merged', label: 'Git Worktrees — merged branches' };
+      }
+      return { key: 'git_worktrees:stale', label: 'Git Worktrees — stale, unmerged' };
+
+    case 'package_caches':
+      return { key: 'package_caches:all', label: 'Package Manager Caches' };
+
+    default:
+      return { key: `${item.category}:all`, label: categoryLabel(item.category) };
+  }
+}
+
 export function buildSelectionTree(report: ScanReport): SelectionTree {
-  return report.results
-    .filter(result => result.items.length > 0)
-    .map(result => ({
-      category: result.category,
-      label: categoryLabel(result.category),
-      expanded: true,
-      items: result.items.map(item => ({ item, selected: item.priority === 'safe' })),
-    }));
+  const buckets = new Map<string, GroupNode>();
+
+  for (const result of report.results) {
+    for (const item of result.items) {
+      const bucket = bucketForItem(item);
+      const existing = buckets.get(bucket.key);
+      const itemNode: ItemNode = { item, selected: item.priority === 'safe' };
+
+      if (existing) {
+        existing.items.push(itemNode);
+      } else {
+        buckets.set(bucket.key, {
+          category: item.category,
+          label: bucket.label,
+          expanded: true,
+          items: [itemNode],
+        });
+      }
+    }
+  }
+
+  return Array.from(buckets.values());
 }
 
 export function toggleItemSelection(tree: SelectionTree, groupIndex: number, itemIndex: number): SelectionTree {

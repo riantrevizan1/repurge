@@ -1,5 +1,6 @@
 import {
   buildSelectionTree,
+  bucketForItem,
   toggleItemSelection,
   toggleGroupSelection,
   toggleGroupExpanded,
@@ -44,8 +45,67 @@ function makeReport(overrides: Partial<ScanReport> = {}): ScanReport {
   };
 }
 
+describe('bucketForItem', () => {
+  it('splits node_modules into a "recently used" bucket for safe items', () => {
+    const bucket = bucketForItem(makeItem({ category: 'node_modules', priority: 'safe' }));
+    expect(bucket.label).toBe('node_modules — recently used');
+  });
+
+  it('splits node_modules into an "inactive" bucket for non-safe items', () => {
+    const bucket = bucketForItem(makeItem({ category: 'node_modules', priority: 'review' }));
+    expect(bucket.label).toBe('node_modules — inactive');
+  });
+
+  it('buckets a merged git worktree separately from a stale, unmerged one', () => {
+    const merged = bucketForItem(
+      makeItem({
+        category: 'git_worktrees',
+        priority: 'safe',
+        metadata: { lastModified: new Date(), inUse: false, safeToDelete: true, merged: true, hasUncommittedChanges: false },
+      })
+    );
+    const stale = bucketForItem(
+      makeItem({
+        category: 'git_worktrees',
+        priority: 'review',
+        metadata: { lastModified: new Date(), inUse: false, safeToDelete: true, merged: false, hasUncommittedChanges: false },
+      })
+    );
+
+    expect(merged.label).toBe('Git Worktrees — merged branches');
+    expect(stale.label).toBe('Git Worktrees — stale, unmerged');
+    expect(merged.key).not.toBe(stale.key);
+  });
+
+  it('buckets a worktree with uncommitted changes separately, even if it is also flagged merged', () => {
+    const bucket = bucketForItem(
+      makeItem({
+        category: 'git_worktrees',
+        priority: 'caution',
+        metadata: {
+          lastModified: new Date(),
+          inUse: false,
+          safeToDelete: false,
+          merged: true,
+          hasUncommittedChanges: true,
+        },
+      })
+    );
+
+    expect(bucket.label).toBe('Git Worktrees — uncommitted changes');
+  });
+
+  it('keeps every package cache in a single bucket regardless of which manager it is', () => {
+    const npmCache = bucketForItem(makeItem({ category: 'package_caches', path: '/home/user/.npm' }));
+    const yarnCache = bucketForItem(makeItem({ category: 'package_caches', path: '/home/user/.yarn/cache' }));
+
+    expect(npmCache.key).toBe(yarnCache.key);
+    expect(npmCache.label).toBe('Package Manager Caches');
+  });
+});
+
 describe('buildSelectionTree', () => {
-  it('creates one group per non-empty detector result', () => {
+  it('creates one group per (category, bucket) combination found in the report', () => {
     const report = makeReport({
       results: [
         { detector: 'NodeModulesDetector', category: 'node_modules', items: [makeItem()], scannedAt: new Date(), duration: 1 },
@@ -60,7 +120,55 @@ describe('buildSelectionTree', () => {
     expect(tree[0].items.length).toBe(1);
   });
 
-  it('pre-selects safe items and leaves review/caution items unselected', () => {
+  it('splits a single category into multiple groups when items fall into different buckets', () => {
+    const report = makeReport({
+      results: [
+        {
+          detector: 'NodeModulesDetector',
+          category: 'node_modules',
+          items: [
+            makeItem({ id: 'safe-1', priority: 'safe' }),
+            makeItem({ id: 'review-1', priority: 'review' }),
+            makeItem({ id: 'review-2', priority: 'review' }),
+          ],
+          scannedAt: new Date(),
+          duration: 1,
+        },
+      ],
+    });
+
+    const tree = buildSelectionTree(report);
+
+    expect(tree.length).toBe(2);
+    const active = tree.find(g => g.label === 'node_modules — recently used')!;
+    const inactive = tree.find(g => g.label === 'node_modules — inactive')!;
+    expect(active.items.map(i => i.item.id)).toEqual(['safe-1']);
+    expect(inactive.items.map(i => i.item.id).sort()).toEqual(['review-1', 'review-2']);
+  });
+
+  it('keeps multiple package caches together in one group', () => {
+    const report = makeReport({
+      results: [
+        {
+          detector: 'PackageCachesDetector',
+          category: 'package_caches',
+          items: [
+            makeItem({ id: 'npm', category: 'package_caches', path: '/home/user/.npm' }),
+            makeItem({ id: 'yarn', category: 'package_caches', path: '/home/user/.yarn/cache' }),
+          ],
+          scannedAt: new Date(),
+          duration: 1,
+        },
+      ],
+    });
+
+    const tree = buildSelectionTree(report);
+
+    expect(tree.length).toBe(1);
+    expect(tree[0].items.length).toBe(2);
+  });
+
+  it('pre-selects safe items and leaves review/caution items unselected, across every bucket', () => {
     const report = makeReport({
       results: [
         {
@@ -78,11 +186,11 @@ describe('buildSelectionTree', () => {
     });
 
     const tree = buildSelectionTree(report);
-    const items = tree[0].items;
+    const allItems = tree.flatMap(g => g.items);
 
-    expect(items.find(i => i.item.id === 'safe-1')!.selected).toBe(true);
-    expect(items.find(i => i.item.id === 'review-1')!.selected).toBe(false);
-    expect(items.find(i => i.item.id === 'caution-1')!.selected).toBe(false);
+    expect(allItems.find(i => i.item.id === 'safe-1')!.selected).toBe(true);
+    expect(allItems.find(i => i.item.id === 'review-1')!.selected).toBe(false);
+    expect(allItems.find(i => i.item.id === 'caution-1')!.selected).toBe(false);
   });
 
   it('starts every group expanded', () => {
@@ -105,7 +213,7 @@ describe('toggleItemSelection', () => {
         {
           detector: 'NodeModulesDetector',
           category: 'node_modules',
-          items: [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'review' })],
+          items: [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'safe' })],
           scannedAt: new Date(),
           duration: 1,
         },
@@ -116,8 +224,8 @@ describe('toggleItemSelection', () => {
     const updated = toggleItemSelection(tree, 0, 1);
 
     expect(updated[0].items[0].selected).toBe(true); // untouched
-    expect(updated[0].items[1].selected).toBe(true); // was false, now true
-    expect(tree[0].items[1].selected).toBe(false); // original tree untouched (immutable)
+    expect(updated[0].items[1].selected).toBe(false); // was true (safe), now false
+    expect(tree[0].items[1].selected).toBe(true); // original tree untouched (immutable)
   });
 });
 
@@ -128,13 +236,14 @@ describe('toggleGroupSelection', () => {
         {
           detector: 'NodeModulesDetector',
           category: 'node_modules',
-          items: [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'caution' })],
+          items: [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'safe' })],
           scannedAt: new Date(),
           duration: 1,
         },
       ],
     });
-    const tree = buildSelectionTree(report);
+    let tree = buildSelectionTree(report);
+    tree = toggleItemSelection(tree, 0, 1); // deselect 'b' so the group starts partially selected
 
     const updated = toggleGroupSelection(tree, 0);
 

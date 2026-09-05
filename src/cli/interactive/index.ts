@@ -1,6 +1,7 @@
 export { runInteractiveSelect } from './runInteractiveSelect.js';
 export {
   buildSelectionTree,
+  bucketForItem,
   toggleItemSelection,
   toggleGroupSelection,
   toggleGroupExpanded,
@@ -11,4 +12,5 @@ export {
   getSelectedItems,
   getSelectionSummary,
 } from './selectionTree.js';
-export type { SelectionTree, GroupNode, ItemNode, SelectionRow } from './selectionTree.js';
+export type { SelectionTree, GroupNode, ItemNode, SelectionRow, SelectionBucket } from './selectionTree.js';
+export { computePathWidth } from './layout.js';

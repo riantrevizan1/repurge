@@ -83,6 +83,29 @@ describe('SelectionApp', () => {
     expect(frame).toContain('[ ]'); // caution item not pre-selected
   });
 
+  it('splits node_modules into separate groups by activity instead of one flat category', async () => {
+    const { lastFrame } = render(
+      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
+    );
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).toContain('node_modules — recently used');
+    expect(frame).toContain('node_modules — inactive');
+  });
+
+  it('renders each expanded group\'s items as a bordered table', async () => {
+    const { lastFrame } = render(
+      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
+    );
+    await flush();
+
+    const frame = lastFrame();
+    expect(frame).toContain('┌');
+    expect(frame).toContain('┬');
+    expect(frame).toContain('└');
+  });
+
   it('shows the running selection count and size in the header', async () => {
     const { lastFrame } = render(
       <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />

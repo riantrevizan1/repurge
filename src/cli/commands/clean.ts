@@ -144,6 +144,16 @@ export function cleanCommand(): Command {
         return;
       }
 
+      if (opts.interactive && !process.stdin.isTTY) {
+        console.error(
+          colors.error(
+            '--interactive requires an interactive terminal (stdin is not a TTY). Run without --interactive, or in a real terminal session.'
+          )
+        );
+        process.exitCode = 1;
+        return;
+      }
+
       const category = opts.category as GarbageCategory | undefined;
       const scanReport = await runScan({ category });
 
