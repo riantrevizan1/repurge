@@ -20,11 +20,13 @@ export default {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  setupFilesAfterEnv: ['<rootDir>/src/test/jestSetup.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/bin/**',
-    '!src/**/index.ts'
+    '!src/**/index.ts',
+    '!src/test/**'
   ],
   coveragePathIgnorePatterns: ['/node_modules/'],
   coverageThreshold: {
