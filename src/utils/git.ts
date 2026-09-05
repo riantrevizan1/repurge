@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { dirname } from 'path';
 
 export interface WorktreeInfo {
   path: string;
@@ -213,11 +214,42 @@ export function getLastCommitInfo(repoPath: string): CommitInfo | null {
 }
 
 /**
- * Remove a worktree
+ * Resolve the main repository root from any worktree path (including
+ * linked worktrees), by asking git for the shared .git directory.
+ */
+export function getRepoRoot(worktreePath: string): string | null {
+  try {
+    const gitCommonDir = execSync(
+      'git rev-parse --path-format=absolute --git-common-dir',
+      {
+        cwd: worktreePath,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }
+    ).trim();
+
+    if (!gitCommonDir) return null;
+    return dirname(gitCommonDir);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Remove a worktree.
+ *
+ * Uses execSync directly (rather than executeGit) because executeGit
+ * swallows non-zero exit codes and returns '', which would make this
+ * function always report success regardless of whether the removal
+ * actually happened.
  */
 export function removeWorktree(repoPath: string, worktreePath: string): boolean {
   try {
-    executeGit(`worktree remove "${worktreePath}"`, repoPath);
+    execSync(`git worktree remove "${worktreePath}"`, {
+      cwd: repoPath,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     return true;
   } catch {
     return false;
