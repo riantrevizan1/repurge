@@ -9,6 +9,7 @@ yarn-error.log*
 .env.local
 .env.*.local
 coverage/
+test-report/
 .jest_cache/
 .idea/
 .vscode/

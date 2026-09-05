@@ -21,6 +21,19 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/jestSetup.ts'],
+  verbose: true,
+  reporters: [
+    'default',
+    [
+      'jest-html-reporters',
+      {
+        publicPath: './test-report',
+        filename: 'report.html',
+        pageTitle: 'Repurge - Test Report',
+        openReport: false,
+      },
+    ],
+  ],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
