@@ -33,14 +33,20 @@ export class NodeModulesDetector implements IDetector {
   }
 
   async detect(): Promise<GarbageItem[]> {
-    const items: GarbageItem[] = [];
+    // Default search paths (e.g. ~/dev and process.cwd()) commonly overlap
+    // when the CLI is run from inside a project nested under one of them,
+    // so the same node_modules can be found by more than one search root.
+    // De-duplicate by path to avoid reporting (and double-counting) it twice.
+    const itemsByPath = new Map<string, GarbageItem>();
 
     for (const searchPath of this.searchPaths) {
       const foundItems = await this.scanDirectory(searchPath);
-      items.push(...foundItems);
+      for (const item of foundItems) {
+        itemsByPath.set(item.path, item);
+      }
     }
 
-    return items;
+    return Array.from(itemsByPath.values());
   }
 
   private async scanDirectory(dirPath: string, depth = 0): Promise<GarbageItem[]> {

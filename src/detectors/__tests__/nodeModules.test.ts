@@ -121,6 +121,27 @@ describe('NodeModulesDetector', () => {
       expect(foundHidden).toBe(false);
     });
 
+    it('should not report the same node_modules twice when search paths overlap', async () => {
+      // Reproduces a real scan: the default search paths include both a
+      // parent directory (e.g. ~/dev) and process.cwd() when the CLI is run
+      // from inside a project under that parent. Without de-duplication the
+      // same node_modules gets scanned twice and reported twice, inflating
+      // the total reclaimable size shown to the user.
+      const parentDir = join(tempDir, 'dev');
+      const projectDir = join(parentDir, 'my-project');
+      const nodeModulesDir = join(projectDir, 'node_modules');
+      await fs.mkdir(nodeModulesDir, { recursive: true });
+      await fs.writeFile(join(nodeModulesDir, 'pkg.js'), 'module.exports = {}');
+
+      const detector2 = new NodeModulesDetector();
+      detector2.setSearchPaths([parentDir, projectDir]);
+
+      const results = await detector2.detect();
+      const matches = results.filter(r => r.path === nodeModulesDir);
+
+      expect(matches.length).toBe(1);
+    });
+
     it('should generate unique IDs for each item', async () => {
       const projectDir1 = join(tempDir, 'project6');
       const nodeModulesDir1 = join(projectDir1, 'node_modules');
