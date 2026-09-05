@@ -1,28 +1,28 @@
-# 🧹 REPURGE — Comece Aqui
+# Repurge — Guia de Início Rápido
 
-## Você tem TUDO pronto! Só precisa fazer 3 coisas:
+Este guia cobre a configuração inicial do ambiente e o primeiro commit do projeto.
 
-### 1️⃣ Abra o Terminal
+## 1. Abra o terminal
 
-Pressione `Cmd + Space` no seu Mac, digite `Terminal` e abra.
+No macOS, pressione `Cmd + Space`, digite `Terminal` e pressione Enter.
 
-### 2️⃣ Rode este comando
+## 2. Execute o script de setup
 
-Copie e cole no Terminal (ele vai instalar tudo automaticamente):
+No terminal, execute:
 
 ```bash
 cd ~/repurge && bash SETUP.sh
 ```
 
-**Pronto!** O script vai:
-- ✅ Instalar todas as dependências
-- ✅ Compilar o TypeScript
-- ✅ Rodar os testes (devem passar 10/10)
-- ✅ Te mostrar o que fazer depois
+O script realiza as seguintes etapas:
+- Instala as dependências do projeto
+- Compila o TypeScript
+- Executa a suíte de testes (10/10 devem passar)
+- Exibe os próximos passos ao final
 
-### 3️⃣ Faça o primeiro commit
+## 3. Crie o primeiro commit
 
-Depois que o script terminar, copie e cole isto:
+Após a conclusão do script, execute:
 
 ```bash
 git add .
@@ -30,29 +30,20 @@ git commit -m "Initial commit: Foundation + NodeModulesDetector (TDD)"
 git push -u origin main
 ```
 
----
+## Resultado esperado
 
-## 🎯 Pronto!
+Ao final desse processo, o repositório estará disponível no GitHub com:
+- Todo o código TypeScript versionado
+- A suíte de testes passando
+- Base pronta para o desenvolvimento dos próximos detectores
 
-Seu repositório vai estar online no GitHub com:
-- ✅ Todo o código TypeScript
-- ✅ Todos os testes passando
-- ✅ Pronto para desenvolver mais
+## Próximos passos
 
----
+Os próximos itens planejados para o desenvolvimento são:
+- `GitWorktreesDetector`
+- `PackageCachesDetector`
+- Implementação dos Cleaners
 
-## ❓ O que vem depois?
+## Solução de problemas
 
-Volte aqui quando quiser fazer o próximo detector:
-- GitWorktreesDetector
-- PackageCachesDetector
-- Os Cleaners
-
-A gente faz junto!
-
----
-
-## ⚠️ Se der erro
-
-Se algo der erro, me avisa exatamente qual foi a mensagem de erro que apareceu no Terminal!
-
+Caso o script `SETUP.sh` ou algum comando falhe, registre a mensagem de erro completa exibida no terminal antes de prosseguir com a investigação.

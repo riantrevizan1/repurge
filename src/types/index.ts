@@ -20,6 +20,12 @@ export interface GarbageMetadata {
   lastModified: Date;
   inUse: boolean;
   safeToDelete: boolean;
+  // Optional, populated by git-aware detectors (e.g. GitWorktreesDetector)
+  branch?: string;
+  merged?: boolean;
+  hasUncommittedChanges?: boolean;
+  lastCommitAuthor?: string;
+  lastCommitDate?: Date;
 }
 
 /**

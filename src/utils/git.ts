@@ -15,6 +15,12 @@ export interface BranchInfo {
   committer: string;
 }
 
+export interface CommitInfo {
+  hash: string;
+  date: Date;
+  author: string;
+}
+
 /**
  * Execute a git command
  */
@@ -34,12 +40,7 @@ export function executeGit(command: string, cwd?: string): string {
  * Check if a directory is a git repository
  */
 export function isGitRepo(path: string): boolean {
-  try {
-    executeGit('rev-parse --git-dir', path);
-    return true;
-  } catch {
-    return false;
-  }
+  return executeGit('rev-parse --git-dir', path).length > 0;
 }
 
 /**
@@ -147,22 +148,24 @@ export function getBranches(repoPath: string): BranchInfo[] {
  */
 export function getMergedBranches(repoPath: string): string[] {
   try {
-    // Get default branch first
+    // Get default branch first. executeGit never throws (it returns '' on
+    // failure), so we must check for an empty result explicitly rather than
+    // relying on try/catch here.
     let defaultBranch = 'main';
-    try {
-      defaultBranch = executeGit(
-        'symbolic-ref refs/remotes/origin/HEAD --short',
-        repoPath
-      ).split('/')[1];
-    } catch {
-      // Try master if main doesn't exist
-      try {
-        const output = executeGit('show-ref --head --q', repoPath);
-        if (output.includes('master')) {
-          defaultBranch = 'master';
-        }
-      } catch {
-        // fall back to 'main'
+    const symbolicRef = executeGit(
+      'symbolic-ref refs/remotes/origin/HEAD --short',
+      repoPath
+    );
+
+    if (symbolicRef) {
+      const remoteBranch = symbolicRef.split('/')[1];
+      if (remoteBranch) {
+        defaultBranch = remoteBranch;
+      }
+    } else {
+      const output = executeGit('show-ref --head --q', repoPath);
+      if (output.includes('master')) {
+        defaultBranch = 'master';
       }
     }
 
@@ -172,10 +175,40 @@ export function getMergedBranches(repoPath: string): string[] {
     return output
       .split('\n')
       .filter(l => l.length > 0)
-      .map(l => l.replace(/^\*?\s+/, '').trim())
+      // "* " marks the current branch, "+ " marks a branch checked out in
+      // another worktree - both need to be stripped to get the bare name.
+      .map(l => l.replace(/^[*+]?\s+/, '').trim())
       .filter(l => l !== defaultBranch);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Get info about the last commit reachable from HEAD at the given path
+ * (works per-worktree, since HEAD differs across worktrees)
+ */
+export function getLastCommitInfo(repoPath: string): CommitInfo | null {
+  try {
+    // %x09 (tab) is used as the field separator instead of a literal
+    // character like "|" because executeGit runs through a shell, which
+    // would otherwise interpret it as a pipe.
+    const output = executeGit(
+      'log -1 --format=%H%x09%ad%x09%an --date=iso-strict',
+      repoPath
+    );
+    if (!output) return null;
+
+    const [hash, date, author] = output.split('\t');
+    if (!hash) return null;
+
+    return {
+      hash,
+      date: new Date(date),
+      author: author || 'unknown',
+    };
+  } catch {
+    return null;
   }
 }
 
