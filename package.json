@@ -45,7 +45,7 @@
   },
   "homepage": "https://github.com/riantrevizan1/repurge#readme",
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0"
   },
