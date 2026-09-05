@@ -13,6 +13,8 @@ import {
   selectAll,
   selectNone,
   isGroupFullySelected,
+  isRiskyItem,
+  describeGroupBreakdown,
   flattenVisibleRows,
   getSelectedItems,
   getSelectionSummary,
@@ -132,7 +134,9 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
           const arrow = group.expanded ? '▼' : '▶';
           const checkbox = isGroupFullySelected(group) ? CHECKED : UNCHECKED;
           const groupSize = group.items.reduce((sum, itemNode) => sum + itemNode.item.size, 0);
-          const line = `${arrow} ${checkbox} ${group.label} — ${formatBytes(groupSize)} (${group.items.length} item(s))`;
+          const breakdown = describeGroupBreakdown(group);
+          const breakdownSuffix = breakdown ? ` (${breakdown})` : '';
+          const line = `${arrow} ${checkbox} ${group.label}${breakdownSuffix} — ${formatBytes(groupSize)} (${group.items.length} item(s))`;
           return (
             <Text key={`group-${row.groupIndex}`}>{highlight(line, isCursor)}</Text>
           );
@@ -140,9 +144,10 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
 
         const itemNode = tree[row.groupIndex].items[row.itemIndex];
         const checkbox = itemNode.selected ? CHECKED : UNCHECKED;
-        const line = `   ${checkbox} ${formatBytes(itemNode.item.size).padEnd(10)} ${priorityBadge(
+        const riskMarker = isRiskyItem(itemNode.item) ? '!' : ' ';
+        const line = `   ${checkbox}${riskMarker} ${formatBytes(itemNode.item.size).padEnd(10)} ${priorityBadge(
           itemNode.item.priority
-        )} ${truncate(itemNode.item.path, PATH_WIDTH)}`;
+        )} ${itemNode.item.reason} — ${truncate(itemNode.item.path, PATH_WIDTH)}`;
         return (
           <Text key={`item-${row.groupIndex}-${row.itemIndex}`}>{highlight(line, isCursor)}</Text>
         );

@@ -95,6 +95,69 @@ describe('SelectionApp', () => {
     expect(frame).toContain('[ ]'); // caution item not pre-selected
   });
 
+  it('shows each item\'s reason (age/context) inline, not just its path', async () => {
+    const items = [
+      makeItem({ id: 'a', priority: 'review', path: '/tmp/a/node_modules', reason: 'Not modified for 14 days' }),
+    ];
+    const report = makeReport({
+      results: [{ detector: 'NodeModulesDetector', category: 'node_modules', items, scannedAt: new Date(), duration: 1 }],
+      totalItems: 1,
+      totalSize: items[0].size,
+    });
+
+    const { lastFrame } = render(<SelectionApp report={report} onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    await flush();
+
+    expect(lastFrame()).toContain('Not modified for 14 days');
+  });
+
+  it('marks caution-priority items with a "!" risk indicator', async () => {
+    const { lastFrame } = render(
+      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
+    );
+    await flush();
+
+    expect(lastFrame()).toContain('[ ]!');
+  });
+
+  it('does not add a risk indicator to safe items', async () => {
+    const items = [makeItem({ id: 'a', priority: 'safe' })];
+    const report = makeReport({
+      results: [{ detector: 'NodeModulesDetector', category: 'node_modules', items, scannedAt: new Date(), duration: 1 }],
+      totalItems: 1,
+      totalSize: items[0].size,
+    });
+
+    const { lastFrame } = render(<SelectionApp report={report} onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    await flush();
+
+    expect(lastFrame()).not.toContain('[x]!');
+  });
+
+  it('shows a priority breakdown in the group header only when priorities are mixed', async () => {
+    const { lastFrame } = render(
+      <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
+    );
+    await flush();
+
+    // twoItemReport mixes a safe item with a caution item in the same group.
+    expect(lastFrame()).toContain('(1 safe, 1 caution)');
+  });
+
+  it('omits the breakdown when every item in the group shares the same priority', async () => {
+    const items = [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'safe' })];
+    const report = makeReport({
+      results: [{ detector: 'NodeModulesDetector', category: 'node_modules', items, scannedAt: new Date(), duration: 1 }],
+      totalItems: 2,
+      totalSize: items[0].size + items[1].size,
+    });
+
+    const { lastFrame } = render(<SelectionApp report={report} onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    await flush();
+
+    expect(lastFrame()).not.toContain('safe)');
+  });
+
   it('shows the running selection count and size in the header', async () => {
     const { lastFrame } = render(
       <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />

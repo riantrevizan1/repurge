@@ -1,4 +1,4 @@
-import { GarbageCategory, GarbageItem, ScanReport } from '../../types/index.js';
+import { GarbageCategory, GarbageItem, GarbagePriority, ScanReport } from '../../types/index.js';
 import { categoryLabel } from '../output/formatter.js';
 
 export interface ItemNode {
@@ -64,6 +64,31 @@ export function selectNone(tree: SelectionTree): SelectionTree {
 
 export function isGroupFullySelected(group: GroupNode): boolean {
   return group.items.length > 0 && group.items.every(itemNode => itemNode.selected);
+}
+
+export function isRiskyItem(item: GarbageItem): boolean {
+  return item.priority === 'caution';
+}
+
+const PRIORITY_ORDER: GarbagePriority[] = ['safe', 'review', 'caution'];
+
+/**
+ * Summarizes how many items of each priority a group contains, e.g.
+ * "2 safe, 1 review, 1 caution" - but only when the group is a mix of
+ * priorities. A homogeneous group (everything safe, or everything review)
+ * already shows that via its checkboxes, so the summary would just be
+ * redundant noise there.
+ */
+export function describeGroupBreakdown(group: GroupNode): string {
+  const counts: Record<GarbagePriority, number> = { safe: 0, review: 0, caution: 0 };
+  for (const itemNode of group.items) {
+    counts[itemNode.item.priority] += 1;
+  }
+
+  const distinctPriorities = PRIORITY_ORDER.filter(priority => counts[priority] > 0);
+  if (distinctPriorities.length <= 1) return '';
+
+  return distinctPriorities.map(priority => `${counts[priority]} ${priority}`).join(', ');
 }
 
 export function flattenVisibleRows(tree: SelectionTree): SelectionRow[] {

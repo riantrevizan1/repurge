@@ -6,6 +6,8 @@ import {
   selectAll,
   selectNone,
   isGroupFullySelected,
+  isRiskyItem,
+  describeGroupBreakdown,
   flattenVisibleRows,
   getSelectedItems,
   getSelectionSummary,
@@ -325,5 +327,57 @@ describe('getSelectedItems / getSelectionSummary', () => {
     const summary = getSelectionSummary(tree);
 
     expect(summary).toEqual({ count: 2, size: 350 });
+  });
+});
+
+describe('isRiskyItem', () => {
+  it('flags caution-priority items as risky', () => {
+    expect(isRiskyItem(makeItem({ priority: 'caution' }))).toBe(true);
+  });
+
+  it('does not flag safe or review items as risky', () => {
+    expect(isRiskyItem(makeItem({ priority: 'safe' }))).toBe(false);
+    expect(isRiskyItem(makeItem({ priority: 'review' }))).toBe(false);
+  });
+});
+
+describe('describeGroupBreakdown', () => {
+  it('returns an empty string when every item shares the same priority', () => {
+    const report = makeReport({
+      results: [
+        {
+          detector: 'A',
+          category: 'node_modules',
+          items: [makeItem({ id: 'a', priority: 'safe' }), makeItem({ id: 'b', priority: 'safe' })],
+          scannedAt: new Date(),
+          duration: 1,
+        },
+      ],
+    });
+    const tree = buildSelectionTree(report);
+
+    expect(describeGroupBreakdown(tree[0])).toBe('');
+  });
+
+  it('summarizes counts per priority when a group has mixed priorities', () => {
+    const report = makeReport({
+      results: [
+        {
+          detector: 'A',
+          category: 'node_modules',
+          items: [
+            makeItem({ id: 'a', priority: 'safe' }),
+            makeItem({ id: 'b', priority: 'safe' }),
+            makeItem({ id: 'c', priority: 'review' }),
+            makeItem({ id: 'd', priority: 'caution' }),
+          ],
+          scannedAt: new Date(),
+          duration: 1,
+        },
+      ],
+    });
+    const tree = buildSelectionTree(report);
+
+    expect(describeGroupBreakdown(tree[0])).toBe('2 safe, 1 review, 1 caution');
   });
 });
