@@ -7,6 +7,9 @@
   "bin": {
     "repurge": "dist/bin/repurge.js"
   },
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.js",
