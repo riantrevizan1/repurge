@@ -69,16 +69,13 @@ async function type(stdin: { write: (data: string) => void }, ...inputs: string[
 }
 
 describe('SelectionApp', () => {
-  it('keeps the banner visible as part of its own render tree, so Ink redraws never erase it', async () => {
+  it('does not render its own banner (already shown on the category picker screen before it)', async () => {
     const { lastFrame } = render(
       <SelectionApp report={twoItemReport()} onSubmit={jest.fn()} onCancel={jest.fn()} />
     );
     await flush();
 
-    // The banner must be rendered by Ink itself (not printed separately via
-    // console.log before mount) - otherwise Ink's own redraw-on-keypress
-    // cycle clears it along with everything else on screen.
-    expect(lastFrame()).toContain('The cleanup tool for AI-powered developers');
+    expect(lastFrame()).not.toContain('The cleanup tool for AI-powered developers');
   });
 
   it('renders every group and item with its checkbox state', async () => {

@@ -72,6 +72,15 @@ describe('CategoryPickerApp', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('keeps the banner visible after several interactions (Ink redraws must not erase it)', async () => {
+    const { lastFrame, stdin } = render(<CategoryPickerApp onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    await flush();
+
+    await type(stdin, ARROW_DOWN, ' ', ARROW_DOWN, ' ');
+
+    expect(lastFrame()).toContain('The cleanup tool for AI-powered developers');
+  });
+
   it('selects none with "n" and all with "a"', async () => {
     const { lastFrame, stdin } = render(<CategoryPickerApp onSubmit={jest.fn()} onCancel={jest.fn()} />);
     await flush();

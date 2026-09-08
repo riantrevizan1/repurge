@@ -4,7 +4,6 @@ import chalk from 'chalk';
 import { GarbageItem, ScanReport } from '../../types/index.js';
 import { formatBytes } from '../../utils/fs.js';
 import { priorityBadge } from '../output/colors.js';
-import { renderBanner } from '../output/banner.js';
 import {
   buildSelectionTree,
   toggleItemSelection,
@@ -112,7 +111,6 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
   if (tree.length === 0) {
     return (
       <Box flexDirection="column">
-        <Text>{renderBanner()}</Text>
         <Text>Nothing to select. Press q to exit.</Text>
       </Box>
     );
@@ -120,7 +118,6 @@ export function SelectionApp({ report, onSubmit, onCancel }: SelectionAppProps):
 
   return (
     <Box flexDirection="column">
-      <Text>{renderBanner()}</Text>
       <Text>
         {tree.length} categories · {formatBytes(report.totalSize)} reclaimable · {summary.count} selected, sum{' '}
         {formatBytes(summary.size)}
