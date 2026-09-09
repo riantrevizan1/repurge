@@ -13,6 +13,7 @@ import { PackageCachesDetector } from '../../detectors/packageCaches.js';
 import { formatScanReport } from '../output/index.js';
 import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
+import { withSpinner } from '../output/spinner.js';
 import { saveLastScanReport } from '../reportStore.js';
 
 export const VALID_CATEGORIES: GarbageCategory[] = [
@@ -129,10 +130,12 @@ export function scanCommand(): Command {
         return;
       }
 
-      const report = await runScan({
-        category: opts.category as GarbageCategory | undefined,
-        maxAgeDays,
-      });
+      const report = await withSpinner('Scanning for reclaimable space...', () =>
+        runScan({
+          category: opts.category as GarbageCategory | undefined,
+          maxAgeDays,
+        })
+      );
 
       await saveLastScanReport(report);
 

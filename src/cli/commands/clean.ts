@@ -9,6 +9,7 @@ import { runScan, VALID_CATEGORIES } from './scan.js';
 import { formatScanReport, formatCleanResult } from '../output/index.js';
 import { renderBanner } from '../output/banner.js';
 import { colors } from '../output/colors.js';
+import { withSpinner } from '../output/spinner.js';
 import { saveLastCleanResult } from '../reportStore.js';
 import { runInteractiveSelect } from '../interactive/runInteractiveSelect.js';
 import { runCategoryPicker } from '../interactive/runCategoryPicker.js';
@@ -177,7 +178,9 @@ export function cleanCommand(): Command {
         categoriesToScan = chosenCategories;
       }
 
-      const scanReport = await runScan({ categories: categoriesToScan });
+      const scanReport = await withSpinner('Scanning for reclaimable space...', () =>
+        runScan({ categories: categoriesToScan })
+      );
 
       if (scanReport.totalItems === 0) {
         console.log(colors.info('Nothing to clean. Your system is already tidy.'));

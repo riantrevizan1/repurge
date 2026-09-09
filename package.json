@@ -1,6 +1,6 @@
 {
   "name": "repurge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The cleanup tool for AI-powered developers.",
   "type": "module",
   "main": "dist/index.js",

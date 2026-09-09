@@ -14,13 +14,20 @@ export class NodeModulesDetector implements IDetector {
   private maxAgeDays = 7;
 
   constructor() {
+    const home = homedir();
+    const cwd = process.cwd();
+
     this.searchPaths = [
-      join(homedir(), 'projects'),
-      join(homedir(), 'dev'),
-      join(homedir(), 'work'),
-      join(homedir(), 'code'),
-      join(homedir(), 'src'),
-      process.cwd(),
+      join(home, 'projects'),
+      join(home, 'dev'),
+      join(home, 'work'),
+      join(home, 'code'),
+      join(home, 'src'),
+      // Skip cwd when it *is* the home directory: recursing through
+      // ~/Library, ~/Downloads, etc. is slow and never what a project
+      // scan is looking for. The dedicated project subfolders above
+      // already cover the common case.
+      ...(cwd === home ? [] : [cwd]),
     ];
   }
 
